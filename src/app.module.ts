@@ -3,13 +3,15 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
+import { GamesModule } from './games/games.module';
+import { LobbyModule } from './lobby/lobby.module';
+import { TestsModule } from './tests/tests.module';
 
 @Module({
   imports: [
-    UsersModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'postgres',
+      host: 'localhost',
       port: 5432,
       username: 'postgres',
       password: 'postgres',
@@ -17,6 +19,10 @@ import { UsersModule } from './users/users.module';
       autoLoadEntities: true,
       synchronize: true, //TODO : REMOVE FOR PROD
     }),
+    UsersModule,
+    GamesModule,
+    LobbyModule,
+    TestsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
