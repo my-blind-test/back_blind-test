@@ -8,7 +8,9 @@ export class User {
   id: number;
 
   @ApiProperty()
-  @Column()
-  @ApiProperty()
+  @Column({ unique: true })
   name: string;
+
+  @Column()
+  password: string;
 }

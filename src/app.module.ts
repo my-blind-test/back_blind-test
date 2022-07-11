@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { GamesModule } from './games/games.module';
 import { LobbyModule } from './lobby/lobby.module';
-import { TestsModule } from './tests/tests.module';
+import { AuthModule } from './auth/auth.module';
+import { AppController } from './app.controller';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -22,9 +23,15 @@ import { TestsModule } from './tests/tests.module';
     UsersModule,
     GamesModule,
     LobbyModule,
-    TestsModule,
+    AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AuthModule,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}
