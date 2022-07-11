@@ -4,8 +4,8 @@ import { ApiProperty } from '@nestjs/swagger';
 @Entity()
 export class User {
   @ApiProperty()
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @ApiProperty()
   @Column({ unique: true })
