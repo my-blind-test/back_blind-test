@@ -4,11 +4,14 @@ import { ApiProperty } from '@nestjs/swagger';
 @Entity()
 export class Game {
   @ApiProperty()
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @ApiProperty()
   @Column()
-  @ApiProperty()
   name: string;
+
+  @ApiProperty()
+  @Column({ nullable: true })
+  password: string;
 }

@@ -44,7 +44,7 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('updateGame')
   async updateGame(
-    @MessageBody('id') id: number,
+    @MessageBody('id') id: string,
     @MessageBody('body') updateGameDto: UpdateGameDto,
   ) {
     await this.gamesService.update(id, updateGameDto);
@@ -54,7 +54,7 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('remove')
-  async remove(@MessageBody('id') id: number) {
+  async remove(@MessageBody('id') id: string) {
     await this.gamesService.remove(id);
 
     const games = await this.gamesService.findAll();

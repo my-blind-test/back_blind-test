@@ -19,7 +19,7 @@ export class GamesService {
     return game;
   }
 
-  async update(id: number, gameDto: UpdateGameDto): Promise<Game> {
+  async update(id: string, gameDto: UpdateGameDto): Promise<Game> {
     const game: Game = await this.findOne(id);
 
     return this.gamesRepository.save({ ...game, ...gameDto });
@@ -29,11 +29,11 @@ export class GamesService {
     return this.gamesRepository.find();
   }
 
-  findOne(id: number): Promise<Game> {
+  findOne(id: string): Promise<Game> {
     return this.gamesRepository.findOneBy({ id });
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     await this.gamesRepository.delete(id);
   }
 }
