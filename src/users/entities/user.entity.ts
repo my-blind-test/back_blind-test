@@ -11,6 +11,10 @@ export class User {
   @Column({ unique: true })
   name: string;
 
+  @ApiProperty()
+  @Column({ default: false })
+  isAdmin: boolean;
+
   @Column()
   password: string;
 }

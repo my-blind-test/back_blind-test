@@ -7,12 +7,17 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  Req,
+  NotFoundException,
+  HttpCode,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/metadata';
+import { Request } from 'express';
+import { User } from './entities/user.entity';
 
 @Controller('users')
 @ApiTags('users')
@@ -21,31 +26,46 @@ export class UsersController {
 
   @Public()
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  async create(@Body() createUserDto: CreateUserDto) {
+    return await this.usersService.create(createUserDto);
   }
 
-  @Public()
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  async findAll() {
+    return await this.usersService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.usersService.findOne(id);
   }
 
   @Patch(':id')
-  update(
+  async update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updateUserDto: UpdateUserDto,
+    @Req() request: Request,
   ) {
-    return this.usersService.update(id, updateUserDto);
+    const user: User = await this.usersService.findOne(request.user['userId']);
+
+    if (!user.isAdmin && request.user['userId'] != id) {
+      throw new NotFoundException();
+    }
+
+    return await this.usersService.update(id, updateUserDto);
   }
 
   @Delete(':id')
-  remove(@Param('id', new ParseUUIDPipe()) id: string) {
-    return this.usersService.remove(id);
+  @HttpCode(204)
+  async delete(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Req() request: Request,
+  ) {
+    const user: User = await this.usersService.findOne(request.user['userId']);
+
+    if (!user.isAdmin && request.user['userId'] != id) {
+      throw new NotFoundException();
+    }
+    await this.usersService.delete(id);
   }
 }
