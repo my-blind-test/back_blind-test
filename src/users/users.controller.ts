@@ -44,11 +44,11 @@ export class UsersController {
   async update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updateUserDto: UpdateUserDto,
-    @Req() request: Request,
+    @Req() req: Request,
   ) {
-    const user: User = await this.usersService.findOne(request.user['userId']);
+    const user: User = await this.usersService.findOne(req.user['userId']);
 
-    if (!user.isAdmin && request.user['userId'] != id) {
+    if (!user.isAdmin && req.user['userId'] != id) {
       throw new NotFoundException();
     }
 
@@ -59,11 +59,11 @@ export class UsersController {
   @HttpCode(204)
   async delete(
     @Param('id', new ParseUUIDPipe()) id: string,
-    @Req() request: Request,
+    @Req() req: Request,
   ) {
-    const user: User = await this.usersService.findOne(request.user['userId']);
+    const user: User = await this.usersService.findOne(req.user['userId']);
 
-    if (!user.isAdmin && request.user['userId'] != id) {
+    if (!user.isAdmin && req.user['userId'] != id) {
       throw new NotFoundException();
     }
     await this.usersService.delete(id);
