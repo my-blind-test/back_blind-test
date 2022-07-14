@@ -11,6 +11,8 @@ import {
   NotFoundException,
   HttpCode,
   BadRequestException,
+  UseInterceptors,
+  ClassSerializerInterceptor,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -22,12 +24,13 @@ import { User } from './entities/user.entity';
 
 @Controller('users')
 @ApiTags('users')
+@UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Public()
   @Post()
-  async create(@Body() createUserDto: CreateUserDto) {
+  async create(@Body() createUserDto: CreateUserDto): Promise<void | User> {
     const user = await this.usersService.create(createUserDto).catch((err) => {
       if (err.code == '23505') {
         throw new BadRequestException('This username already exists.');
@@ -38,12 +41,12 @@ export class UsersController {
   }
 
   @Get()
-  async findAll() {
+  async findAll(): Promise<User[]> {
     return await this.usersService.findAll();
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<User> {
     const user = await this.usersService.findOne(id);
 
     if (!user) {
@@ -57,7 +60,7 @@ export class UsersController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updateUserDto: UpdateUserDto,
     @Req() req: Request,
-  ) {
+  ): Promise<User> {
     const user: User = await this.usersService.findOne(req.user['userId']);
 
     if (!user || (!user.isAdmin && req.user['userId'] != id)) {
@@ -72,7 +75,7 @@ export class UsersController {
   async delete(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: Request,
-  ) {
+  ): Promise<void> {
     const user: User = await this.usersService.findOne(req.user['userId']);
 
     if (!user || (!user.isAdmin && req.user['userId'] != id)) {
