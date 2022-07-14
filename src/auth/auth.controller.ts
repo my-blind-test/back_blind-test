@@ -1,4 +1,11 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { Public } from 'src/metadata';
@@ -19,6 +26,12 @@ export class AuthController {
   @Public()
   @Post('register')
   async register(@Body() createUserDto: CreateUserDto) {
-    return this.authService.register(createUserDto);
+    const user = await this.authService.register(createUserDto).catch((err) => {
+      if (err.code == '23505') {
+        throw new BadRequestException('This username already exists.');
+      }
+    });
+
+    return user;
   }
 }

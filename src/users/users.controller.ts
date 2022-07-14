@@ -10,6 +10,7 @@ import {
   Req,
   NotFoundException,
   HttpCode,
+  BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -27,7 +28,13 @@ export class UsersController {
   @Public()
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
-    return await this.usersService.create(createUserDto);
+    const user = await this.usersService.create(createUserDto).catch((err) => {
+      if (err.code == '23505') {
+        throw new BadRequestException('This username already exists.');
+      }
+    });
+
+    return user;
   }
 
   @Get()
@@ -37,7 +44,12 @@ export class UsersController {
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return await this.usersService.findOne(id);
+    const user = await this.usersService.findOne(id);
+
+    if (!user) {
+      throw new NotFoundException();
+    }
+    return user;
   }
 
   @Patch(':id')
@@ -48,7 +60,7 @@ export class UsersController {
   ) {
     const user: User = await this.usersService.findOne(req.user['userId']);
 
-    if (!user.isAdmin && req.user['userId'] != id) {
+    if (!user || (!user.isAdmin && req.user['userId'] != id)) {
       throw new NotFoundException();
     }
 
@@ -63,7 +75,7 @@ export class UsersController {
   ) {
     const user: User = await this.usersService.findOne(req.user['userId']);
 
-    if (!user.isAdmin && req.user['userId'] != id) {
+    if (!user || (!user.isAdmin && req.user['userId'] != id)) {
       throw new NotFoundException();
     }
     await this.usersService.delete(id);
