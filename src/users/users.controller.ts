@@ -31,6 +31,7 @@ export class UsersController {
   @Public()
   @Post()
   async create(@Body() createUserDto: CreateUserDto): Promise<void | User> {
+    //TODO : delete
     const user = await this.usersService.create(createUserDto).catch((err) => {
       if (err.code == '23505') {
         throw new BadRequestException('This username already exists.');

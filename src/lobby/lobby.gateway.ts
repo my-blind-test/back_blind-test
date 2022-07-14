@@ -1,3 +1,4 @@
+import { ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -12,6 +13,7 @@ import { UpdateGameDto } from 'src/games/dto/update-game.dto';
 import { GamesService } from 'src/games/games.service';
 
 @WebSocketGateway({ cors: true, namespace: 'lobby' })
+@UseInterceptors(ClassSerializerInterceptor) // TODO : test
 export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   connectedUsers = [];
@@ -19,10 +21,8 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     this.connectedUsers = [...this.connectedUsers, { id: client.id }];
-    const games = await this.gamesService.findAll();
 
     this.server.emit('users', this.connectedUsers);
-    this.server.emit('games', games);
   }
 
   async handleDisconnect(client: Socket) {

@@ -13,10 +13,7 @@ export class GamesService {
   ) {}
 
   async create(gameDto: CreateGameDto): Promise<Game> {
-    const game = this.gamesRepository.create(gameDto);
-
-    await this.gamesRepository.save(game);
-    return game;
+    return this.gamesRepository.save(this.gamesRepository.create(gameDto));
   }
 
   async update(id: string, gameDto: UpdateGameDto): Promise<Game> {
