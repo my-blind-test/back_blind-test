@@ -15,7 +15,6 @@ export class AuthService {
     const user = await this.usersService.findOneByName(username);
 
     if (user && (await bcrypt.compare(password, user.password))) {
-      delete user['password'];
       return user;
     }
     return null;
@@ -36,7 +35,6 @@ export class AuthService {
       password: hash,
     });
 
-    delete user['password'];
     return user;
   }
 }

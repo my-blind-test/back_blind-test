@@ -46,6 +46,11 @@ export class UsersController {
     return await this.usersService.findAll();
   }
 
+  @Get('/me')
+  async findme(@Req() req: Request): Promise<User> {
+    return await this.usersService.findOne(req.user['userId']);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<User> {
     const user = await this.usersService.findOne(id);

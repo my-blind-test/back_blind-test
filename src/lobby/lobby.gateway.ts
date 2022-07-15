@@ -1,4 +1,4 @@
-import { ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -8,24 +8,27 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { WsJwtAuthGuard } from 'src/auth/guards/ws-jwt-auth.guard';
 import { CreateGameDto } from 'src/games/dto/create-game.dto';
 import { UpdateGameDto } from 'src/games/dto/update-game.dto';
 import { GamesService } from 'src/games/games.service';
 
+@UseGuards(WsJwtAuthGuard)
 @WebSocketGateway({ cors: true, namespace: 'lobby' })
-@UseInterceptors(ClassSerializerInterceptor) // TODO : test
 export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   connectedUsers = [];
   constructor(private readonly gamesService: GamesService) {}
 
   async handleConnection(client: Socket) {
+    console.log('user connected');
     this.connectedUsers = [...this.connectedUsers, { id: client.id }];
 
     this.server.emit('users', this.connectedUsers);
   }
 
   async handleDisconnect(client: Socket) {
+    console.log('user disconnected');
     this.connectedUsers.splice(
       this.connectedUsers.findIndex((user) => user.id === client.id),
       1,
@@ -36,10 +39,13 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('createGame')
   async createGame(@MessageBody() createGameDto: CreateGameDto) {
+    console.log('Create game');
+    console.log(createGameDto);
     await this.gamesService.create(createGameDto);
 
     const games = await this.gamesService.findAll();
     this.server.emit('games', games);
+    return 'OK';
   }
 
   @SubscribeMessage('updateGame')
@@ -51,6 +57,7 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const games = await this.gamesService.findAll();
     this.server.emit('games', games);
+    return 'OK';
   }
 
   @SubscribeMessage('remove')
@@ -59,5 +66,6 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const games = await this.gamesService.findAll();
     this.server.emit('games', games);
+    return 'OK';
   }
 }
