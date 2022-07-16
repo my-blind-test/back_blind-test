@@ -6,6 +6,7 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { WsJwtAuthGuard } from 'src/auth/guards/ws-jwt-auth.guard';
@@ -13,26 +14,36 @@ import { UnauthorizedExceptionFilter } from 'src/auth/filters/ws-auth.filter';
 import { CreateGameDto } from 'src/games/dto/create-game.dto';
 import { UpdateGameDto } from 'src/games/dto/update-game.dto';
 import { GamesService } from 'src/games/games.service';
+import { AuthService } from 'src/auth/auth.service';
+import { UsersService } from 'src/users/users.service';
 
 @UseFilters(UnauthorizedExceptionFilter)
 @UseGuards(WsJwtAuthGuard)
 @WebSocketGateway({ cors: true, namespace: 'lobby' })
 export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
-  connectedUsers = [];
-  constructor(private readonly gamesService: GamesService) {}
+  connectedUsers = {};
+  constructor(
+    private readonly gamesService: GamesService,
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
-  async handleConnection(client: Socket) {
-    this.connectedUsers = [...this.connectedUsers, { id: client.id }];
+  // Créer un décorateur sur client
+  async handleConnection(@ConnectedSocket() client: Socket) {
+    const user = await this.authService.verify(client.handshake.auth.token);
 
-    this.server.emit('users', this.connectedUsers);
+    if (user) {
+      this.connectedUsers[client.id] = { id: user.id, name: user.name };
+
+      this.server.emit('users', this.connectedUsers);
+    } else {
+      client.disconnect();
+    }
   }
 
-  async handleDisconnect(client: Socket) {
-    this.connectedUsers.splice(
-      this.connectedUsers.findIndex((user) => user.id === client.id),
-      1,
-    );
+  async handleDisconnect(@ConnectedSocket() client: Socket) {
+    delete this.connectedUsers[client.id];
 
     this.server.emit('users', this.connectedUsers);
   }
