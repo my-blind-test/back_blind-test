@@ -17,4 +17,8 @@ export class WsJwtAuthGuard extends AuthGuard('jwt') {
       },
     };
   }
+
+  canActivate(context: ExecutionContext) {
+    return super.canActivate(context);
+  }
 }
