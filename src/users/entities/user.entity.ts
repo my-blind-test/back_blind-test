@@ -1,6 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
+import { Game } from 'src/games/entities/game.entity';
 
 @Entity()
 export class User {
@@ -20,4 +21,7 @@ export class User {
   @Exclude()
   @Column()
   password: string;
+
+  @OneToMany(() => Game, (game) => game.user)
+  games: Game[];
 }

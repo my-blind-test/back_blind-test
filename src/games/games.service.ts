@@ -12,13 +12,11 @@ export class GamesService {
     private gamesRepository: Repository<Game>,
   ) {}
 
-  async create(gameDto: CreateGameDto): Promise<Game> {
+  async create(gameDto: CreateGameDto, userId: string): Promise<Game> {
     return this.gamesRepository.save(this.gamesRepository.create(gameDto));
   }
 
-  async update(id: string, gameDto: UpdateGameDto): Promise<Game> {
-    const game: Game = await this.findOne(id);
-
+  async update(game: Game, gameDto: UpdateGameDto): Promise<Game> {
     return this.gamesRepository.save({ ...game, ...gameDto });
   }
 

@@ -36,7 +36,9 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (user) {
       this.connectedUsers[client.id] = { id: user.id, name: user.name };
 
-      this.server.emit('users', this.connectedUsers);
+      client.broadcast.emit('userJoined', {
+        [client.id]: { id: user.id, name: user.name },
+      });
     } else {
       client.disconnect();
     }
@@ -44,39 +46,80 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     delete this.connectedUsers[client.id];
+    this.server.emit('userLeft', client.id);
+  }
 
-    this.server.emit('users', this.connectedUsers);
+  @SubscribeMessage('users')
+  async Users() {
+    return { status: 'OK', content: this.connectedUsers };
   }
 
   @SubscribeMessage('createGame')
-  async createGame(@MessageBody() createGameDto: CreateGameDto) {
-    console.log('Create game');
-    console.log(createGameDto);
-    await this.gamesService.create(createGameDto);
+  async createGame(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() createGameDto: CreateGameDto,
+  ) {
+    const user = await this.authService.verify(client.handshake.auth.token);
+    const newGame = await this.gamesService.create(createGameDto, user.id);
 
-    const games = await this.gamesService.findAll();
-    this.server.emit('games', games);
-    return { status: 'OK', message: null }; //TODO stocker tous les status dans un fichier utils
+    this.server.emit('newGame', newGame);
+    return { status: 'OK', content: null }; //TODO stocker tous les status dans un fichier utils
   }
 
   @SubscribeMessage('updateGame')
   async updateGame(
+    @ConnectedSocket() client: Socket,
     @MessageBody('id') id: string,
     @MessageBody('body') updateGameDto: UpdateGameDto,
   ) {
-    await this.gamesService.update(id, updateGameDto);
+    const game = await this.gamesService.findOne(id);
 
-    const games = await this.gamesService.findAll();
-    this.server.emit('games', games);
-    return { status: 'OK', message: null };
+    if (!game) {
+      return {
+        status: 'BAD_REQUEST',
+        message: "This game doesn't exist",
+      };
+    }
+    const user = await this.authService.verify(client.handshake.auth.token);
+
+    if (!user || game.user.id !== user.id) {
+      return {
+        status: 'FORBIDEN',
+        message: 'You are not allowed to do this action on this game',
+      };
+    }
+
+    await this.gamesService.update(game, updateGameDto);
+    this.server.emit('gameUpdated', game);
+
+    return { status: 'OK', content: null };
   }
 
-  @SubscribeMessage('remove')
-  async remove(@MessageBody('id') id: string) {
-    await this.gamesService.remove(id);
+  @SubscribeMessage('deleteGame')
+  async deleteGame(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('id') id: string,
+  ) {
+    const game = await this.gamesService.findOne(id);
 
-    const games = await this.gamesService.findAll();
-    this.server.emit('games', games);
-    return { status: 'OK', message: null };
+    if (!game) {
+      return {
+        status: 'BAD_REQUEST',
+        message: "This game doesn't exist",
+      };
+    }
+    const user = await this.authService.verify(client.handshake.auth.token);
+
+    if (!user || game.user.id !== user.id) {
+      return {
+        status: 'FORBIDEN',
+        message: 'You are not allowed to do this action on this game',
+      };
+    }
+
+    await this.gamesService.remove(id);
+    this.server.emit('gameDeleted', id);
+
+    return { status: 'OK', content: null };
   }
 }
