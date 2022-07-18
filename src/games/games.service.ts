@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { User } from 'src/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
@@ -12,8 +13,10 @@ export class GamesService {
     private gamesRepository: Repository<Game>,
   ) {}
 
-  async create(gameDto: CreateGameDto, userId: string): Promise<Game> {
-    return this.gamesRepository.save(this.gamesRepository.create(gameDto));
+  async create(gameDto: CreateGameDto, user: User): Promise<Game> {
+    return this.gamesRepository.save(
+      this.gamesRepository.create({ ...gameDto, user }),
+    );
   }
 
   async update(game: Game, gameDto: UpdateGameDto): Promise<Game> {

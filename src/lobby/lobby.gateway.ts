@@ -16,8 +16,10 @@ import { UpdateGameDto } from 'src/games/dto/update-game.dto';
 import { GamesService } from 'src/games/games.service';
 import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from 'src/users/users.service';
+import { QueryFailedFilter } from './filters/QuerryFailed.filter';
 
 @UseFilters(UnauthorizedExceptionFilter)
+@UseFilters(QueryFailedFilter)
 @UseGuards(WsJwtAuthGuard)
 @WebSocketGateway({ cors: true, namespace: 'lobby' })
 export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -54,15 +56,22 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { status: 'OK', content: this.connectedUsers };
   }
 
+  @SubscribeMessage('games')
+  async Games() {
+    const games = await this.gamesService.findAll();
+
+    return { status: 'OK', content: games };
+  }
+
   @SubscribeMessage('createGame')
   async createGame(
     @ConnectedSocket() client: Socket,
     @MessageBody() createGameDto: CreateGameDto,
   ) {
     const user = await this.authService.verify(client.handshake.auth.token);
-    const newGame = await this.gamesService.create(createGameDto, user.id);
+    const newGame = await this.gamesService.create(createGameDto, user);
 
-    this.server.emit('newGame', newGame);
+    this.server.emit('newGame', { [newGame.id]: { name: newGame.name } });
     return { status: 'OK', content: null }; //TODO stocker tous les status dans un fichier utils
   }
 
@@ -85,7 +94,7 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!user || game.user.id !== user.id) {
       return {
         status: 'FORBIDEN',
-        message: 'You are not allowed to do this action on this game',
+        message: 'You are not allowed to do this action on this game.',
       };
     }
 
