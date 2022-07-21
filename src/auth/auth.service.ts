@@ -22,6 +22,10 @@ export class AuthService {
   }
 
   async verify(token: string): Promise<User> {
+    if (!token) {
+      return null;
+    }
+
     const data = this.jwtService.verify(token);
     const user = this.usersService.findOne(data.sub);
 

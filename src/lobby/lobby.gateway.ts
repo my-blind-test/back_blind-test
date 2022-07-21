@@ -24,7 +24,7 @@ import { QueryFailedFilter } from './filters/QuerryFailed.filter';
 @WebSocketGateway({ cors: true, namespace: 'lobby' })
 export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
-  connectedUsers = {};
+  connectedUsers = [];
   constructor(
     private readonly gamesService: GamesService,
     private readonly authService: AuthService,
@@ -36,18 +36,26 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = await this.authService.verify(client.handshake.auth.token);
 
     if (user) {
-      this.connectedUsers[client.id] = { id: user.id, name: user.name };
-
-      client.broadcast.emit('userJoined', {
-        [client.id]: { id: user.id, name: user.name },
+      this.connectedUsers.push({
+        id: user.id,
+        name: user.name,
+        clientId: client.id,
       });
+
+      client.broadcast.emit('userJoined', { id: user.id, name: user.name });
     } else {
       client.disconnect();
     }
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
-    delete this.connectedUsers[client.id];
+    this.connectedUsers.splice(
+      this.connectedUsers.findIndex(
+        (connectUser) => connectUser.id === client.id,
+      ),
+      1,
+    );
+
     this.server.emit('userLeft', client.id);
   }
 
@@ -71,7 +79,7 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = await this.authService.verify(client.handshake.auth.token);
     const newGame = await this.gamesService.create(createGameDto, user);
 
-    this.server.emit('newGame', { [newGame.id]: { name: newGame.name } });
+    this.server.emit('newGame', { id: newGame.id, name: newGame.name });
     return { status: 'OK', content: null }; //TODO stocker tous les status dans un fichier utils
   }
 
