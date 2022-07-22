@@ -9,6 +9,10 @@ export class CreateGameDto {
 
   @ApiProperty()
   @IsString()
-  @IsOptional()
-  public password: string;
+  public password?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  public playlistUrl: string;
 }

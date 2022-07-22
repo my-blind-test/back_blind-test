@@ -18,6 +18,10 @@ export class Game {
   @Column({ nullable: true })
   password: string;
 
+  @ApiProperty()
+  @Column()
+  playlistUrl: string;
+
   @ManyToOne(() => User, (user) => user.games)
   user: User; //TODO : est-ce bien niveau perf de d'avoir l'user et pas juste son ID ?
 }
