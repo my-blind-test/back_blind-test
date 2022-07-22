@@ -9,6 +9,7 @@ export class CreateGameDto {
 
   @ApiProperty()
   @IsString()
+  @IsOptional()
   public password?: string;
 
   @ApiProperty()

@@ -1,2 +1,29 @@
-remove password from returned fields
-Catch 500
+Technique
+Différencier chaque game (socket)
+Authentification (refresh token)
+Host front
+Host DB
+Host back
+Persister les data (rester sur psql ou switch redis ?)
+
+Home
+Classement
+
+Lobby
+Utilisateurs qui bougent
+Afficher les parties en attente et en cours
+Afficher le nombre de joueur dans les parties
+Envoyer des messages
+Afficher les messages des copains
+
+Game
+Utilisateurs qui bougent
+Lancer une partie
+Terminer une partie
+Jouer une musique
+Pouvoir deviner
+Afficher la réponse de la musique
+Affichage des score des joueurs
+Afficher les messages des joueurs
+Afficher ou non la réponse des joueurs
+Avoir une animation en cas de bonne réponse

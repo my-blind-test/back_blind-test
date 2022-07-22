@@ -1,4 +1,4 @@
-import { UseFilters, UseGuards } from '@nestjs/common';
+import { forwardRef, Inject, UseFilters, UseGuards } from '@nestjs/common';
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -15,7 +15,6 @@ import { CreateGameDto } from 'src/games/dto/create-game.dto';
 import { UpdateGameDto } from 'src/games/dto/update-game.dto';
 import { GamesService } from 'src/games/games.service';
 import { AuthService } from 'src/auth/auth.service';
-import { UsersService } from 'src/users/users.service';
 import { QueryFailedFilter } from './filters/QuerryFailed.filter';
 
 @UseFilters(UnauthorizedExceptionFilter)
@@ -26,9 +25,9 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   connectedUsers = [];
   constructor(
+    @Inject(forwardRef(() => GamesService))
     private readonly gamesService: GamesService,
     private readonly authService: AuthService,
-    private readonly usersService: UsersService,
   ) {}
 
   // Créer un décorateur sur client
@@ -112,6 +111,10 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { status: 'OK', content: null };
   }
 
+  // async sendGameUpdated(id: string) {
+  //   this.server.emit('gameDeleted', id);
+  // }
+
   @SubscribeMessage('deleteGame')
   async deleteGame(
     @ConnectedSocket() client: Socket,
@@ -133,10 +136,9 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
         message: 'You are not allowed to do this action on this game',
       };
     }
+  }
 
-    await this.gamesService.remove(id);
+  async sendGameDeleted(id: string) {
     this.server.emit('gameDeleted', id);
-
-    return { status: 'OK', content: null };
   }
 }

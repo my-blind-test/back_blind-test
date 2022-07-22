@@ -1,4 +1,4 @@
-import { UseFilters, UseGuards } from '@nestjs/common';
+import { forwardRef, Inject, UseFilters, UseGuards } from '@nestjs/common';
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -13,7 +13,9 @@ import { WsJwtAuthGuard } from 'src/auth/guards/ws-jwt-auth.guard';
 import { UnauthorizedExceptionFilter } from 'src/auth/filters/ws-auth.filter';
 import { GamesService } from 'src/games/games.service';
 import { AuthService } from 'src/auth/auth.service';
-import { UsersService } from 'src/users/users.service';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { Game } from './entities/game.entity';
+import { LobbyGateway } from 'src/lobby/lobby.gateway';
 
 @UseFilters(UnauthorizedExceptionFilter)
 @UseGuards(WsJwtAuthGuard)
@@ -22,9 +24,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   connectedUsers = [];
   constructor(
+    private schedulerRegistry: SchedulerRegistry,
     private readonly gamesService: GamesService,
     private readonly authService: AuthService,
-    private readonly usersService: UsersService,
+    @Inject(forwardRef(() => LobbyGateway))
+    private readonly lobbyGateway: LobbyGateway,
   ) {}
 
   // Créer un décorateur sur client
@@ -76,5 +80,88 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.emit('message', { clientId: client.id, message: message });
 
     return { status: 'OK', content: null };
+  }
+
+  @SubscribeMessage('startGame')
+  async startGame(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() id: string,
+  ) {
+    console.log(id);
+    const game = await this.gamesService.findOne(id);
+    if (!game) {
+      return {
+        status: 'BAD_REQUEST',
+        message: "This game doesn't exist",
+      };
+    }
+
+    // const user = await this.authService.verify(client.handshake.auth.token);
+    // if (!user || game.user.id !== user.id) {
+    //   return {
+    //     status: 'FORBIDEN',
+    //     message: 'You are not allowed to do this action on this game',
+    //   };
+    // }
+
+    this.server.emit('gameStarted', {});
+    this.gameInterval(game);
+    return { status: 'OK', content: null };
+  }
+
+  @SubscribeMessage('deleteGame')
+  async deleteGame(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() id: string,
+  ) {
+    const game = await this.gamesService.findOne(id);
+    if (!game) {
+      return {
+        status: 'BAD_REQUEST',
+        message: "This game doesn't exist",
+      };
+    }
+
+    // const user = await this.authService.verify(client.handshake.auth.token);
+    // if (!user || game.user.id !== user.id) {
+    //   return {
+    //     status: 'FORBIDEN',
+    //     message: 'You are not allowed to do this action on this game',
+    //   };
+    // }
+
+    this.server.emit('gameFinished', {});
+    this.endGameInterval(game);
+    return { status: 'OK', content: null };
+  }
+
+  gameInterval(game: Game) {
+    const callback = async () => {
+      if (!game.tracks[0]) {
+        this.server.emit('gameFinished', { id: game.id });
+        this.endGameInterval(game);
+        this.schedulerRegistry.deleteInterval(`game-${game.id}`);
+        return;
+      }
+      this.server.emit('newSong', { url: game.tracks[0] });
+
+      game.tracks.shift();
+      await this.gamesService.update(game, { tracks: game.tracks });
+    };
+
+    const interval = setInterval(callback, 3000);
+    this.schedulerRegistry.addInterval(`game-${game.id}`, interval);
+  }
+
+  endGameInterval(game: Game) {
+    const callback = async () => {
+      this.server.emit('gameDeleted', { id: game.id });
+      await this.lobbyGateway.sendGameDeleted(game.id);
+      await this.gamesService.delete(game.id);
+      this.schedulerRegistry.deleteInterval(`end-game-${game.id}`);
+    };
+
+    const interval = setInterval(callback, 5000);
+    this.schedulerRegistry.addInterval(`end-game-${game.id}`, interval);
   }
 }
