@@ -42,6 +42,7 @@ export class GamesController {
     if (!user) {
       throw new NotFoundException();
     }
+
     return user;
   }
 }
