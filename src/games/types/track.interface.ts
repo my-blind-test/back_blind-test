@@ -1,5 +1,5 @@
 export interface Track {
-  name: string;
+  song: string;
   artist: string;
   url: string;
 }

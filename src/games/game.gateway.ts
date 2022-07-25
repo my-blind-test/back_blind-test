@@ -26,6 +26,7 @@ import { ConnectedUser } from './types/connectedUser.interface';
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   gameSlots = 1;
+  currentTracks = {};
 
   constructor(
     private schedulerRegistry: SchedulerRegistry,
@@ -156,7 +157,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       };
     }
 
-    this.server.to(gameId).emit('guess', { clientId: client.id, guess: guess });
+    let answer = 'none'; //TODO improve this system
+
+    if (guess === this.currentTracks[gameId].song) {
+      answer = 'name';
+    }
+    if (guess === this.currentTracks[gameId].artist) {
+      answer === 'name' ? 'both' : 'artist';
+    }
+
+    this.server
+      .to(gameId)
+      .emit('guess', { clientId: client.id, guess: guess, answer });
 
     return { status: 'OK', content: null };
   }
@@ -230,22 +242,27 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { status: 'OK', content: null };
   }
 
+  async playTrack(gameId: string) {
+    const game = await this.gamesService.findOne(gameId);
+
+    if (!game.tracks[0]) {
+      console.log('NO MORE TRACKS');
+      this.server.emit('gameFinished', { id: gameId });
+      this.endGameInterval(gameId);
+      this.schedulerRegistry.deleteInterval(`game-${gameId}`);
+      return;
+    }
+    this.currentTracks[gameId] = game.tracks[0];
+    console.log('NEW TRACK');
+    this.server.emit('newTrack', { ...game.tracks[0] });
+
+    game.tracks.shift();
+    await this.gamesService.update(game, { tracks: game.tracks });
+  }
+
   gameInterval(gameId: string) {
     const callback = async () => {
-      const game = await this.gamesService.findOne(gameId);
-
-      if (!game.tracks[0]) {
-        console.log('NO MORE TRACKS');
-        this.server.emit('gameFinished', { id: gameId });
-        this.endGameInterval(gameId);
-        this.schedulerRegistry.deleteInterval(`game-${gameId}`);
-        return;
-      }
-      console.log('NEW TRACK');
-      this.server.emit('newTrack', { url: game.tracks[0] });
-
-      game.tracks.shift();
-      await this.gamesService.update(game, { tracks: game.tracks });
+      this.playTrack(gameId);
     };
 
     if (this.schedulerRegistry.doesExist('interval', `game-${gameId}`)) {
@@ -255,7 +272,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log('GAME STARTED');
     this.server.to(`${gameId}`).emit('gameStarted', {});
 
-    const interval = setInterval(callback, 3000);
+    this.playTrack(gameId);
+
+    const interval = setInterval(callback, 15000);
     this.schedulerRegistry.addInterval(`game-${gameId}`, interval);
   }
 
@@ -272,7 +291,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log('GAME FINISHED');
     this.server.emit('gameFinished', {});
 
-    const interval = setInterval(callback, 5000);
+    const interval = setInterval(callback, 1000);
     this.schedulerRegistry.addInterval(`end-game-${gameId}`, interval);
   }
 

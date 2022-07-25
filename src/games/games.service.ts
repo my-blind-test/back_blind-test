@@ -41,33 +41,36 @@ export class GamesService {
 
   async tracksFromPlaylist(playlistUrl: string): Promise<Track[]> {
     const tracks = [];
-    // const response = await this.httpService.axiosRef
-    //   .get(
-    //     `https://api.spotify.com/v1/playlists/${this.extractPlaylistId(
-    //       playlistUrl,
-    //     )}/tracks`,
-    //     {
-    //       headers: { Authorization: `Bearer ${process.env.SPOTIFY_TOKEN}` },
-    //     },
-    //   )
-    //   .catch((err) => {
-    //     console.log(err);
-    //     console.log('Error spotify request');
-    //   });
+    const response = await this.httpService.axiosRef
+      .get(
+        `https://api.spotify.com/v1/playlists/${this.extractPlaylistId(
+          playlistUrl,
+        )}/tracks`,
+        {
+          headers: { Authorization: `Bearer ${process.env.SPOTIFY_TOKEN}` },
+        },
+      )
+      .catch((err) => {
+        console.log(err);
+        console.log('Error spotify request');
+      });
 
-    // if (!response) {
-    //   return [];
-    // }
+    console.log(`Bearer ${process.env.SPOTIFY_TOKEN}`);
+    if (!response) {
+      return [];
+    }
 
-    // response.data.items.forEach(
-    //   (item: any) =>
-    //     item.track.preview_url &&
-    //     tracks.push({
-    //       name: item.track.name,
-    //       artist: item.track.artists[0].name,
-    //       url: item.track.preview_url,
-    //     }),
-    // );
+    response.data.items.forEach(
+      (item: any) =>
+        item.track.preview_url &&
+        tracks.push({
+          song: item.track.name,
+          artist: item.track.artists[0].name,
+          url: item.track.preview_url,
+        }),
+    );
+
+    console.log(tracks);
 
     return tracks;
   }
