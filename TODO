@@ -24,7 +24,6 @@ Afficher ou non la réponse des joueurs
 Avoir une animation en cas de bonne réponse
 
 
-//Refacto db
 // renvoyer la liste des gammes au lobby quand update
 //rendre un user admin
 //Bloquer le multi client

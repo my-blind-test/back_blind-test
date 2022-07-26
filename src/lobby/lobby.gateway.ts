@@ -12,12 +12,12 @@ import { Server, Socket } from 'socket.io';
 import { WsJwtAuthGuard } from 'src/auth/guards/ws-jwt-auth.guard';
 import { UnauthorizedExceptionFilter } from 'src/auth/filters/ws-auth.filter';
 import { CreateGameDto } from 'src/games/dto/create-game.dto';
-import { UpdateGameDto } from 'src/games/dto/update-game.dto';
 import { GamesService } from 'src/games/games.service';
 import { AuthService } from 'src/auth/auth.service';
 import { QueryFailedFilter } from './filters/QuerryFailed.filter';
 import { User, UserStatus } from 'src/users/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
+import { Game } from 'src/games/entities/game.entity';
 
 @UseFilters(UnauthorizedExceptionFilter)
 @UseFilters(QueryFailedFilter)
@@ -37,9 +37,16 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = await this.authService.verify(client.handshake.auth.token);
 
     if (user) {
-      client.broadcast.emit('userJoined', { id: user.id, name: user.name });
+      client.broadcast.emit('userJoined', {
+        id: user.id,
+        name: user.name,
+        clientId: client.id,
+      });
 
-      this.usersService.update(user.id, { status: UserStatus.LOBBY });
+      this.usersService.update(user.id, {
+        clientId: client.id,
+        status: UserStatus.LOBBY,
+      });
     } else {
       client.disconnect();
     }
@@ -86,7 +93,11 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { status: 'OK', content: null };
   }
 
-  async sendGameDeleted(id: string) {
+  async emitGameDeleted(id: string) {
     this.server.emit('gameDeleted', id);
+  }
+
+  async emitGameUpdated(game: Game) {
+    this.server.emit('gameUpdated', { game });
   }
 }

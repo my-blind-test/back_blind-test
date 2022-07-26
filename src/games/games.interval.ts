@@ -1,6 +1,5 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { LobbyGateway } from 'src/lobby/lobby.gateway';
 import { GameStatus } from './entities/game.entity';
 import { GamesGateway } from './games.gateway';
 import { GamesService } from './games.service';
@@ -11,8 +10,6 @@ export class GamesInterval {
   constructor(
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly gamesService: GamesService,
-    @Inject(forwardRef(() => LobbyGateway))
-    private readonly lobbyGateway: LobbyGateway,
     @Inject(forwardRef(() => GamesGateway))
     private readonly gameGateway: GamesGateway,
   ) {}
@@ -103,7 +100,6 @@ export class GamesInterval {
     console.log('GAME DELETED');
 
     await this.gamesService.delete(gameId);
-    await this.lobbyGateway.sendGameDeleted(gameId);
     this.gameGateway.socketInstance().emit('gameDeleted', { id: gameId });
   }
 }

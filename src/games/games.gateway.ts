@@ -22,7 +22,6 @@ import { AuthService } from 'src/auth/auth.service';
 import { Game, GameStatus } from './entities/game.entity';
 import { ConnectedUser } from './types/connectedUser.interface';
 import { GamesInterval } from './games.interval';
-import { Track } from './types/track.interface';
 import { UsersService } from 'src/users/users.service';
 import { User, UserStatus } from 'src/users/entities/user.entity';
 
@@ -102,6 +101,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
 
       this.usersService.update(user.id, {
+        clientId: client.id,
         status: UserStatus.GAME,
         gameId: game.id,
       });
@@ -117,30 +117,15 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       console.log('USER JOINED');
       return {
         status: 'OK',
-        content: { gameStatus: game.status, trackUrl: game.currentTrack?.url },
+        content: {
+          users: game.connectedUsers,
+          gameStatus: game.status,
+          trackUrl: game.currentTrack?.url,
+        },
       };
     }
     console.log('USER FAILED TO JOIN');
     return { status: 'KO', content: null };
-  }
-
-  //TODO faire un decorateur qui get la game depuis les rooms
-  @SubscribeMessage('users')
-  async users(@ConnectedSocket() client: Socket) {
-    const gameId = this.getGameIdFromRooms(client['adapter'].rooms);
-    if (!gameId) {
-      return {
-        status: 'KO',
-        content: 'You must be connected to a game.',
-      };
-    }
-
-    const game = await this.gamesService.findOne(gameId);
-
-    return {
-      status: 'OK',
-      content: game.connectedUsers,
-    };
   }
 
   @SubscribeMessage('guess')

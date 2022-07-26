@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from 'src/users/entities/user.entity';
+import { LobbyGateway } from 'src/lobby/lobby.gateway';
 import { Repository } from 'typeorm';
 import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
@@ -14,6 +14,8 @@ export class GamesService {
     @InjectRepository(Game)
     private gamesRepository: Repository<Game>,
     private readonly httpService: HttpService,
+    @Inject(forwardRef(() => LobbyGateway))
+    private readonly lobbyGateway: LobbyGateway,
   ) {
     // const response = this.httpService.axiosRef
     //   .post(
@@ -86,6 +88,8 @@ export class GamesService {
   async update(id: string, gameDto: UpdateGameDto): Promise<Game> {
     const game: Game = await this.findOne(id);
 
+    await this.lobbyGateway.emitGameUpdated({ ...game, ...gameDto });
+
     return this.gamesRepository.save({ ...game, ...gameDto });
   }
 
@@ -99,5 +103,6 @@ export class GamesService {
 
   async delete(id: string): Promise<void> {
     await this.gamesRepository.delete(id);
+    await this.lobbyGateway.emitGameDeleted(id);
   }
 }
