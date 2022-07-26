@@ -1,4 +1,10 @@
-import { forwardRef, Inject, UseFilters, UseGuards } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  UseFilters,
+  UseGuards,
+} from '@nestjs/common';
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -13,27 +19,27 @@ import { WsJwtAuthGuard } from 'src/auth/guards/ws-jwt-auth.guard';
 import { UnauthorizedExceptionFilter } from 'src/auth/filters/ws-auth.filter';
 import { GamesService } from 'src/games/games.service';
 import { AuthService } from 'src/auth/auth.service';
-import { SchedulerRegistry } from '@nestjs/schedule';
 import { Game } from './entities/game.entity';
-import { LobbyGateway } from 'src/lobby/lobby.gateway';
 import { ConnectedUser } from './types/connectedUser.interface';
+import { GamesInterval } from './games.interval';
+import { Track } from './types/track.interface';
 
 //Checker à chaque fois si la game (locale) existe
 
 @UseFilters(UnauthorizedExceptionFilter)
 @UseGuards(WsJwtAuthGuard)
 @WebSocketGateway({ cors: true, namespace: 'game' })
-export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
+@Injectable()
+export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   gameSlots = 1;
   currentTracks = {};
 
   constructor(
-    private schedulerRegistry: SchedulerRegistry,
     private readonly gamesService: GamesService,
+    @Inject(forwardRef(() => GamesInterval))
+    private readonly gamesInterval: GamesInterval,
     private readonly authService: AuthService,
-    @Inject(forwardRef(() => LobbyGateway))
-    private readonly lobbyGateway: LobbyGateway,
   ) {}
 
   async handleConnection(@ConnectedSocket() client: Socket) {
@@ -62,7 +68,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
 
     if (game.connectedUsers.length - 1 <= 0) {
-      this.endGameIfEmptyInterval(game.id);
+      this.gamesInterval.endGameIfEmptyInterval(game.id);
     }
 
     this.server.to(game.id).emit('userLeft', client.id);
@@ -89,7 +95,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // if (game.users.length + 1 >= this.gameSlots) {
       //   console.log('START BECAUSE GAME IS FULL');
-      //   this.gameInterval(await this.gamesService.findOne(game.id));
+      //   this.gamesInterval.gameInterval(await this.gamesService.findOne(game.id));
       // }
 
       await client.join(id);
@@ -214,7 +220,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     console.log('START REQUESTED');
 
-    this.gameInterval(gameId);
+    this.gamesInterval.gameInterval(gameId);
     return { status: 'OK', content: null };
   }
 
@@ -238,93 +244,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     //   };
     // }
 
-    this.endGameInterval(gameId);
+    this.server.emit('gameFinished', {});
+    this.gamesInterval.endGameInterval(gameId);
     return { status: 'OK', content: null };
   }
 
-  async playTrack(gameId: string) {
-    const game = await this.gamesService.findOne(gameId);
-
-    if (!game.tracks[0]) {
-      console.log('NO MORE TRACKS');
-      this.server.emit('gameFinished', { id: gameId });
-      this.endGameInterval(gameId);
-      this.schedulerRegistry.deleteInterval(`game-${gameId}`);
-      return;
-    }
-    this.currentTracks[gameId] = game.tracks[0];
-    console.log('NEW TRACK');
-    this.server.emit('newTrack', { ...game.tracks[0] });
-
-    game.tracks.shift();
-    await this.gamesService.update(game, { tracks: game.tracks });
+  updateCurrentTracks(gameId: string, track: Track) {
+    this.currentTracks[gameId] = track;
   }
 
-  gameInterval(gameId: string) {
-    const callback = async () => {
-      this.playTrack(gameId);
-    };
-
-    if (this.schedulerRegistry.doesExist('interval', `game-${gameId}`)) {
-      return;
-    }
-
-    console.log('GAME STARTED');
-    this.server.to(`${gameId}`).emit('gameStarted', {});
-
-    this.playTrack(gameId);
-
-    const interval = setInterval(callback, 15000);
-    this.schedulerRegistry.addInterval(`game-${gameId}`, interval);
-  }
-
-  endGameInterval(gameId: string) {
-    const callback = async () => {
-      this.removeGame(gameId);
-      this.schedulerRegistry.deleteInterval(`end-game-${gameId}`);
-    };
-
-    if (this.schedulerRegistry.doesExist('interval', `end-game-${gameId}`)) {
-      return;
-    }
-
-    console.log('GAME FINISHED');
-    this.server.emit('gameFinished', {});
-
-    const interval = setInterval(callback, 1000);
-    this.schedulerRegistry.addInterval(`end-game-${gameId}`, interval);
-  }
-
-  endGameIfEmptyInterval(gameId: string) {
-    const callback = async () => {
-      const game = await this.gamesService.findOne(gameId);
-
-      if (game.connectedUsers.length === 0) {
-        this.removeGame(game.id);
-        this.schedulerRegistry.deleteInterval(`end-game-if-empty-${gameId}`);
-        return;
-      }
-      this.schedulerRegistry.deleteInterval(`end-game-if-empty-${gameId}`);
-    };
-
-    if (
-      this.schedulerRegistry.doesExist(
-        'interval',
-        `end-game-if-empty-${gameId}`,
-      )
-    ) {
-      return;
-    }
-    console.log('GAME EMPTY');
-    const interval = setInterval(callback, 5000);
-    this.schedulerRegistry.addInterval(`end-game-if-empty-${gameId}`, interval);
-  }
-
-  async removeGame(gameId: string) {
-    console.log('GAME DELETED');
-
-    await this.gamesService.delete(gameId);
-    await this.lobbyGateway.sendGameDeleted(gameId);
-    this.server.emit('gameDeleted', { id: gameId });
+  socketInstance() {
+    return this.server;
   }
 }

@@ -3,11 +3,12 @@ import { GamesService } from './games.service';
 import { Game } from './entities/game.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GamesController } from './games.controller';
-import { GameGateway } from './game.gateway';
+import { GamesGateway } from './games.gateway';
 import { UsersModule } from 'src/users/users.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { HttpModule } from '@nestjs/axios';
 import { LobbyModule } from 'src/lobby/lobby.module';
+import { GamesInterval } from './games.interval';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { LobbyModule } from 'src/lobby/lobby.module';
     UsersModule,
     forwardRef(() => LobbyModule),
   ],
-  providers: [GamesService, GameGateway],
+  providers: [GamesService, GamesGateway, GamesInterval],
   exports: [GamesService],
   controllers: [GamesController],
 })
