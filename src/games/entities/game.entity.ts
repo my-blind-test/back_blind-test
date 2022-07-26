@@ -1,9 +1,13 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { User } from 'src/users/entities/user.entity';
 import { Track } from '../types/track.interface';
 import { ConnectedUser } from '../types/connectedUser.interface';
+
+export enum GameStatus {
+  WAITING = 'waiting',
+  RUNNING = 'running',
+}
 
 @Entity()
 export class Game {
@@ -18,14 +22,32 @@ export class Game {
   @ApiProperty()
   @Exclude()
   @Column({ nullable: true })
-  password: string;
+  password?: string;
 
+  @ApiProperty()
+  @Column({ default: 0 })
+  slots: number;
+
+  @ApiProperty()
+  @Column({
+    type: 'enum',
+    enum: GameStatus,
+    default: GameStatus.WAITING,
+  })
+  status: GameStatus;
+
+  @Exclude()
   @Column('jsonb', { default: [] })
   tracks: Track[];
 
+  @Exclude()
+  @Column('jsonb', { nullable: true })
+  currentTrack: Track;
+
+  @Exclude()
   @Column('jsonb', { default: [] })
   connectedUsers: ConnectedUser[];
 
-  @ManyToOne(() => User, (user) => user.games)
-  user: User; //TODO : est-ce bien niveau perf de d'avoir l'user et pas juste son ID ?
+  @Column({ nullable: true })
+  adminId: string;
 }

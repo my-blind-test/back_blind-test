@@ -19,10 +19,12 @@ import { WsJwtAuthGuard } from 'src/auth/guards/ws-jwt-auth.guard';
 import { UnauthorizedExceptionFilter } from 'src/auth/filters/ws-auth.filter';
 import { GamesService } from 'src/games/games.service';
 import { AuthService } from 'src/auth/auth.service';
-import { Game } from './entities/game.entity';
+import { Game, GameStatus } from './entities/game.entity';
 import { ConnectedUser } from './types/connectedUser.interface';
 import { GamesInterval } from './games.interval';
 import { Track } from './types/track.interface';
+import { UsersService } from 'src/users/users.service';
+import { User, UserStatus } from 'src/users/entities/user.entity';
 
 //Checker à chaque fois si la game (locale) existe
 
@@ -32,14 +34,13 @@ import { Track } from './types/track.interface';
 @Injectable()
 export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
-  gameSlots = 1;
-  currentTracks = {};
 
   constructor(
     private readonly gamesService: GamesService,
     @Inject(forwardRef(() => GamesInterval))
     private readonly gamesInterval: GamesInterval,
     private readonly authService: AuthService,
+    private readonly usersService: UsersService,
   ) {}
 
   async handleConnection(@ConnectedSocket() client: Socket) {
@@ -50,18 +51,27 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.disconnect();
       return;
     }
+
+    this.usersService.update(user.id, { clientId: client.id });
     console.log('| USER CONNECTED');
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     console.log('USER LEFT');
-    const game = await this.getGameFromClientId(client.id);
+    const user: User = await this.usersService.findOneFromClientId(client.id);
 
-    if (!game) {
-      return;
+    if (user) {
+      this.usersService.update(user.id, {
+        status: UserStatus.OFFLINE,
+        gameId: null,
+      });
     }
 
-    await this.gamesService.update(game, {
+    const game: Game = await this.getGameFromClientId(client.id);
+
+    if (!game) return;
+
+    await this.gamesService.update(game.id, {
       connectedUsers: game.connectedUsers.filter(
         (connectedUser) => connectedUser.clientId !== client.id,
       ),
@@ -81,57 +91,37 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody('id') id: string,
   ) {
     const user = await this.authService.verify(client.handshake.auth.token);
-    const game = await this.gamesService.findOne(undefined);
+    const game = await this.gamesService.findOne(id);
 
     if (user && game) {
-      await this.gamesService.update(game, {
+      await this.gamesService.update(game.id, {
         connectedUsers: [
           ...game.connectedUsers,
           { name: user.name, id: user.id, clientId: client.id },
         ],
       });
 
-      this.getGameFromClientId(client.id);
+      this.usersService.update(user.id, {
+        status: UserStatus.GAME,
+        gameId: game.id,
+      });
 
-      // if (game.users.length + 1 >= this.gameSlots) {
+      // if (game.users.length + 1 >= game.slots) {
       //   console.log('START BECAUSE GAME IS FULL');
-      //   this.gamesInterval.gameInterval(await this.gamesService.findOne(game.id));
+      //   this.gamesInterval.gameInterval(game);
       // }
 
       await client.join(id);
       this.server.to(id).emit('userJoined', { id: user.id, name: user.name });
 
       console.log('USER JOINED');
-      return { status: 'OK', content: null };
+      return {
+        status: 'OK',
+        content: { gameStatus: game.status, trackUrl: game.currentTrack?.url },
+      };
     }
     console.log('USER FAILED TO JOIN');
     return { status: 'KO', content: null };
-  }
-
-  async getGameFromClientId(clientId: string) {
-    const games: Game[] = await this.gamesService.findAll();
-
-    const game = games.filter(
-      (game: Game) =>
-        game.connectedUsers.filter(
-          (user: ConnectedUser) => user.clientId === clientId,
-        )[0],
-    )[0];
-
-    return game;
-  }
-
-  getGameIdFromRooms(rooms: any) {
-    const regexExp =
-      /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
-
-    rooms = Array.from(rooms);
-
-    const gameRoom = rooms.filter((room: any) => regexExp.test(room[0]));
-
-    if (gameRoom[0]) {
-      return gameRoom[0][0];
-    }
   }
 
   //TODO faire un decorateur qui get la game depuis les rooms
@@ -162,19 +152,20 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         content: 'You must be connected to a game.',
       };
     }
+    const game: Game = await this.gamesService.findOne(gameId);
+    if (game.status !== GameStatus.RUNNING || !game.currentTrack) return;
 
     let answer = 'none'; //TODO improve this system
-
-    if (guess === this.currentTracks[gameId].song) {
-      answer = 'name';
+    if (guess === game.currentTrack.song) {
+      answer = 'song';
     }
-    if (guess === this.currentTracks[gameId].artist) {
-      answer === 'name' ? 'both' : 'artist';
+    if (guess === game.currentTrack.artist) {
+      answer === 'song' ? 'both' : 'artist';
     }
 
     this.server
       .to(gameId)
-      .emit('guess', { clientId: client.id, guess: guess, answer });
+      .emit('guess', { clientId: client.id, guess, answer });
 
     return { status: 'OK', content: null };
   }
@@ -208,10 +199,10 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         content: 'You must be connected to a game.',
       };
     }
-    const game = await this.gamesService.findOne(gameId);
 
+    // const game = await this.gamesService.findOne(gameId);
     // const user = await this.authService.verify(client.handshake.auth.token);
-    // if (!user || game.user.id !== user.id) {
+    // if (!user || game.adminId !== user.id) {
     //   return {
     //     status: 'FORBIDEN',
     //     message: 'You are not allowed to do this action on this game',
@@ -233,9 +224,8 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         content: 'You must be connected to a game.',
       };
     }
-    const game = await this.gamesService.findOne(gameId);
 
-    console.log('DELETE REQUESTED');
+    // const game = await this.gamesService.findOne(gameId);
     // const user = await this.authService.verify(client.handshake.auth.token);
     // if (!user || game.user.id !== user.id) {
     //   return {
@@ -244,13 +234,37 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     //   };
     // }
 
+    console.log('DELETE REQUESTED');
+
     this.server.emit('gameFinished', {});
     this.gamesInterval.endGameInterval(gameId);
     return { status: 'OK', content: null };
   }
 
-  updateCurrentTracks(gameId: string, track: Track) {
-    this.currentTracks[gameId] = track;
+  async getGameFromClientId(clientId: string) {
+    const games: Game[] = await this.gamesService.findAll();
+
+    const game = games.filter(
+      (game: Game) =>
+        game.connectedUsers.filter(
+          (user: ConnectedUser) => user.clientId === clientId,
+        )[0],
+    )[0];
+
+    return game;
+  }
+
+  getGameIdFromRooms(rooms: any) {
+    const regexExp =
+      /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
+
+    rooms = Array.from(rooms);
+
+    const gameRoom = rooms.filter((room: any) => regexExp.test(room[0]));
+
+    if (gameRoom[0]) {
+      return gameRoom[0][0];
+    }
   }
 
   socketInstance() {

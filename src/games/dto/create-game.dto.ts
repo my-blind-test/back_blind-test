@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateGameDto {
   @ApiProperty()
@@ -13,7 +13,17 @@ export class CreateGameDto {
   public password?: string;
 
   @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  public slots?: number;
+
+  @ApiProperty()
   @IsString()
   @IsNotEmpty()
   public playlistUrl: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  public adminId?: string;
 }

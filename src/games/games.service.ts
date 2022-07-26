@@ -75,20 +75,17 @@ export class GamesService {
     return tracks;
   }
 
-  async create(gameDto: CreateGameDto, user: User): Promise<Game> {
+  async create(gameDto: CreateGameDto): Promise<Game> {
     const tracks: Track[] = await this.tracksFromPlaylist(gameDto.playlistUrl);
 
     return this.gamesRepository.save(
-      this.gamesRepository.create({
-        name: gameDto.name,
-        password: gameDto.password,
-        user,
-        tracks,
-      }),
+      this.gamesRepository.create({ ...gameDto, tracks }),
     );
   }
 
-  async update(game: Game, gameDto: UpdateGameDto): Promise<Game> {
+  async update(id: string, gameDto: UpdateGameDto): Promise<Game> {
+    const game: Game = await this.findOne(id);
+
     return this.gamesRepository.save({ ...game, ...gameDto });
   }
 

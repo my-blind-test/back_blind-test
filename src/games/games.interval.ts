@@ -1,8 +1,10 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { LobbyGateway } from 'src/lobby/lobby.gateway';
+import { GameStatus } from './entities/game.entity';
 import { GamesGateway } from './games.gateway';
 import { GamesService } from './games.service';
+import { Track } from './types/track.interface';
 
 @Injectable()
 export class GamesInterval {
@@ -26,6 +28,7 @@ export class GamesInterval {
 
     console.log('GAME STARTED');
     this.gameGateway.socketInstance().to(`${gameId}`).emit('gameStarted', {});
+    this.gamesService.update(gameId, { status: GameStatus.RUNNING });
 
     this.playTrack(gameId);
 
@@ -85,12 +88,15 @@ export class GamesInterval {
       this.schedulerRegistry.deleteInterval(`game-${gameId}`);
       return;
     }
-    this.gameGateway.updateCurrentTracks(gameId, game.tracks[0]);
-    console.log('NEW TRACK');
-    this.gameGateway.socketInstance().emit('newTrack', { ...game.tracks[0] });
 
+    console.log('NEW TRACK');
+    const currentTrack: Track = game.tracks[0];
+    this.gameGateway.socketInstance().emit('newTrack', { ...currentTrack });
     game.tracks.shift();
-    await this.gamesService.update(game, { tracks: game.tracks });
+    await this.gamesService.update(game.id, {
+      tracks: game.tracks,
+      currentTrack,
+    });
   }
 
   async removeGame(gameId: string) {

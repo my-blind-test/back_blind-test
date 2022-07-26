@@ -1,9 +1,10 @@
 Technique
 Authentification (refresh token)
+Store connected users & game track in cache
+Bloquer le multi client
 Host front
 Host DB
 Host back
-Persister les data (rester sur psql ou switch redis ?)
 
 Home
 Classement
@@ -23,14 +24,14 @@ Afficher ou non la réponse des joueurs
 Avoir une animation en cas de bonne réponse
 
 
-//Déplacer les intervals (avoir un interval start game un un game)
+//Refacto db
+// renvoyer la liste des gammes au lobby quand update
+//rendre un user admin
 //Bloquer le multi client
-//Auth Spotify
-//Auth Front
-//Intégrer mongo ?
-//Intégrer Redis
 //Afficher le nombre de joueurs par partie
 //Inrégrer le score (Créer la route pour le classement)
+//Auth Spotify
+//Auth Front
 //Test unitaires
 //Beau front
 //Tests fonctionnels

@@ -2,7 +2,6 @@ import { forwardRef, Module } from '@nestjs/common';
 import { GamesService } from './games.service';
 import { Game } from './entities/game.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { GamesController } from './games.controller';
 import { GamesGateway } from './games.gateway';
 import { UsersModule } from 'src/users/users.module';
 import { AuthModule } from 'src/auth/auth.module';
@@ -20,6 +19,5 @@ import { GamesInterval } from './games.interval';
   ],
   providers: [GamesService, GamesGateway, GamesInterval],
   exports: [GamesService],
-  controllers: [GamesController],
 })
 export class GamesModule {}
