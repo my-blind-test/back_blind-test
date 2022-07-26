@@ -71,6 +71,8 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!game) return;
 
     await this.gamesService.update(game.id, {
+      adminId:
+        client.id === game.adminId ? game.connectedUsers[0]?.id : game.adminId,
       connectedUsers: game.connectedUsers.filter(
         (connectedUser) => connectedUser.clientId !== client.id,
       ),
@@ -94,6 +96,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     if (user && game) {
       await this.gamesService.update(game.id, {
+        adminId: game.adminId ? game.adminId : client.id,
         connectedUsers: [
           ...game.connectedUsers,
           { name: user.name, id: user.id, clientId: client.id },
