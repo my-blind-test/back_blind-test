@@ -27,10 +27,10 @@ export class GamesInterval {
     this.gameGateway.socketInstance().to(`${gameId}`).emit('gameStarted', {});
     this.gamesService.update(gameId, { status: GameStatus.RUNNING });
 
-    this.playTrack(gameId);
+    // this.playTrack(gameId);
 
-    const interval = setInterval(callback, 15000);
-    this.schedulerRegistry.addInterval(`game-${gameId}`, interval);
+    // const interval = setInterval(callback, 15000);
+    // this.schedulerRegistry.addInterval(`game-${gameId}`, interval);
   }
 
   endGameInterval(gameId: string) {

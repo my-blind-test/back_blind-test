@@ -99,7 +99,12 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         adminId: game.adminId ? game.adminId : client.id,
         connectedUsers: [
           ...game.connectedUsers,
-          { name: user.name, id: user.id, clientId: client.id },
+          {
+            name: user.name,
+            id: user.id,
+            clientId: client.id,
+            score: user.score,
+          },
         ],
       });
 
@@ -115,7 +120,12 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // }
 
       await client.join(id);
-      this.server.to(id).emit('userJoined', { id: user.id, name: user.name });
+      this.server.to(id).emit('userJoined', {
+        name: user.name,
+        id: user.id,
+        clientId: client.id,
+        score: user.score,
+      });
 
       console.log('USER JOINED');
       return {

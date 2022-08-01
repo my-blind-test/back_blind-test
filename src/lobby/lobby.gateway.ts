@@ -89,7 +89,7 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
       adminId: user.id,
     });
 
-    this.server.emit('newGame', { id: newGame.id, name: newGame.name });
+    this.server.emit('newGame', { ...newGame });
     return { status: 'OK', content: null };
   }
 
@@ -98,6 +98,6 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async emitGameUpdated(game: Game) {
-    this.server.emit('gameUpdated', { game });
+    this.server.emit('gameUpdated', { ...game });
   }
 }

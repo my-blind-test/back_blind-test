@@ -88,7 +88,7 @@ export class GamesService {
   async update(id: string, gameDto: UpdateGameDto): Promise<Game> {
     const game: Game = await this.findOne(id);
 
-    await this.lobbyGateway.emitGameUpdated({ ...game, ...gameDto });
+    this.lobbyGateway.emitGameUpdated({ ...game, ...gameDto });
 
     return this.gamesRepository.save({ ...game, ...gameDto });
   }
@@ -103,6 +103,7 @@ export class GamesService {
 
   async delete(id: string): Promise<void> {
     await this.gamesRepository.delete(id);
-    await this.lobbyGateway.emitGameDeleted(id);
+
+    this.lobbyGateway.emitGameDeleted(id);
   }
 }
