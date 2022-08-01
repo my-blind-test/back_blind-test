@@ -51,7 +51,7 @@ export class GamesService {
   }
 
   async tracksFromPlaylist(playlistUrl: string): Promise<Track[]> {
-    const token = await this.getSpotifyToken();
+    const token = await this.getSpotifyToken(); //TODO : ne plus le faire à chaque requête
     const tracks = [];
 
     if (!token) return tracks;
