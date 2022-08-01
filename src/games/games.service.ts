@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { stringify } from 'querystring';
 import { LobbyGateway } from 'src/lobby/lobby.gateway';
 import { Repository } from 'typeorm';
 import { CreateGameDto } from './dto/create-game.dto';
@@ -16,24 +17,7 @@ export class GamesService {
     private readonly httpService: HttpService,
     @Inject(forwardRef(() => LobbyGateway))
     private readonly lobbyGateway: LobbyGateway,
-  ) {
-    // const response = this.httpService.axiosRef
-    //   .post(
-    //     `https://api.spotify.com/v1/playlists/${this.extractPlaylistId(
-    //       playlistUrl,
-    //     )}/tracks`,
-    //     {
-    //       headers: { Authorization: `Bearer ${process.env.SPOTIFY_TOKEN}` },
-    //     },
-    //   )
-    //   .catch((err) => {
-    //     console.log('Error spotify request');
-    //     console.log(err);
-    //   });
-    // if (!response) {
-    //   return [];
-    // }
-  }
+  ) {}
 
   extractPlaylistId(playlistUrl: string): string {
     return playlistUrl
@@ -41,15 +25,44 @@ export class GamesService {
       [playlistUrl.split('/').length - 1].split('?')[0];
   }
 
+  async getSpotifyToken(): Promise<string | undefined> {
+    const response = await this.httpService.axiosRef
+      .post(
+        'https://accounts.spotify.com/api/token',
+        stringify({
+          grant_type: 'client_credentials',
+        }),
+        {
+          headers: {
+            Authorization: `Basic ${Buffer.from(
+              `${process.env.SPOTIFY_ID}:${process.env.SPOTIFY_SECRET}`,
+            ).toString('base64')}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      )
+      .catch((err) => {
+        console.log(err);
+        console.log('Error spotify auth');
+        return undefined;
+      });
+
+    return response?.data?.access_token;
+  }
+
   async tracksFromPlaylist(playlistUrl: string): Promise<Track[]> {
+    const token = await this.getSpotifyToken();
     const tracks = [];
+
+    if (!token) return tracks;
+
     const response = await this.httpService.axiosRef
       .get(
         `https://api.spotify.com/v1/playlists/${this.extractPlaylistId(
           playlistUrl,
         )}/tracks`,
         {
-          headers: { Authorization: `Bearer ${process.env.SPOTIFY_TOKEN}` },
+          headers: { Authorization: `Bearer ${token}` },
         },
       )
       .catch((err) => {
@@ -57,9 +70,8 @@ export class GamesService {
         console.log('Error spotify request');
       });
 
-    console.log(`Bearer ${process.env.SPOTIFY_TOKEN}`);
     if (!response) {
-      return [];
+      return tracks;
     }
 
     response.data.items.forEach(
@@ -78,6 +90,7 @@ export class GamesService {
   }
 
   async create(gameDto: CreateGameDto): Promise<Game> {
+    console.log('HELLO');
     const tracks: Track[] = await this.tracksFromPlaylist(gameDto.playlistUrl);
 
     return this.gamesRepository.save(

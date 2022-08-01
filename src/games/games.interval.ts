@@ -23,14 +23,13 @@ export class GamesInterval {
       return;
     }
 
-    console.log('GAME STARTED');
     this.gameGateway.socketInstance().to(`${gameId}`).emit('gameStarted', {});
     this.gamesService.update(gameId, { status: GameStatus.RUNNING });
 
-    // this.playTrack(gameId);
+    this.playTrack(gameId);
 
-    // const interval = setInterval(callback, 15000);
-    // this.schedulerRegistry.addInterval(`game-${gameId}`, interval);
+    const interval = setInterval(callback, 15000);
+    this.schedulerRegistry.addInterval(`game-${gameId}`, interval);
   }
 
   endGameInterval(gameId: string) {
@@ -43,7 +42,6 @@ export class GamesInterval {
       return;
     }
 
-    console.log('GAME FINISHED');
     this.gameGateway.socketInstance().emit('gameFinished', {});
 
     const interval = setInterval(callback, 1000);
@@ -70,7 +68,6 @@ export class GamesInterval {
     ) {
       return;
     }
-    console.log('GAME EMPTY');
     const interval = setInterval(callback, 5000);
     this.schedulerRegistry.addInterval(`end-game-if-empty-${gameId}`, interval);
   }
@@ -78,15 +75,13 @@ export class GamesInterval {
   async playTrack(gameId: string) {
     const game = await this.gamesService.findOne(gameId);
 
-    if (!game.tracks[0]) {
-      console.log('NO MORE TRACKS');
+    if (!game || !game.tracks[0]) {
       this.gameGateway.socketInstance().emit('gameFinished', {});
       this.endGameInterval(gameId);
       this.schedulerRegistry.deleteInterval(`game-${gameId}`);
       return;
     }
 
-    console.log('NEW TRACK');
     const currentTrack: Track = game.tracks[0];
     this.gameGateway.socketInstance().emit('newTrack', { ...currentTrack });
     game.tracks.shift();
@@ -97,8 +92,6 @@ export class GamesInterval {
   }
 
   async removeGame(gameId: string) {
-    console.log('GAME DELETED');
-
     this.gamesService.delete(gameId);
     this.gameGateway.socketInstance().emit('gameDeleted', { id: gameId });
   }
