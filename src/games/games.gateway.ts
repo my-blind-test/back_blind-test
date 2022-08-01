@@ -26,6 +26,7 @@ import { ConnectedUser } from './types/connectedUser.interface';
 import { GamesInterval } from './games.interval';
 import { UsersService } from 'src/users/users.service';
 import { User, UserStatus } from 'src/users/entities/user.entity';
+import { instanceToPlain } from 'class-transformer';
 
 @UseFilters(UnauthorizedExceptionFilter)
 @UseGuards(WsJwtAuthGuard)
@@ -52,7 +53,6 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     this.usersService.update(user.id, { clientId: client.id });
-    console.log('| USER CONNECTED');
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -83,7 +83,6 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     this.server.to(game.id).emit('userLeft', client.id);
-    console.log('| USER LEFT');
   }
 
   @SubscribeMessage('joinGame')
@@ -120,12 +119,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // }
 
       await client.join(id);
-      this.server.to(id).emit('userJoined', {
-        name: user.name,
-        id: user.id,
-        clientId: client.id,
-        score: user.score,
-      });
+      this.server.to(id).emit('userJoined', instanceToPlain(user));
 
       console.log('USER JOINED');
       return {
@@ -137,7 +131,6 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         },
       };
     }
-    console.log('USER FAILED TO JOIN');
     return { status: 'KO', content: null };
   }
 
@@ -153,7 +146,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const game: Game = await this.gamesService.findOne(gameId);
     if (game.status !== GameStatus.RUNNING || !game.currentTrack) return;
 
-    let answer = 'none'; //TODO improve this system
+    let answer = 'none';
     if (guess === game.currentTrack.song) {
       answer = 'song';
     }
