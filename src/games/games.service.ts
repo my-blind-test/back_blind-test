@@ -87,10 +87,14 @@ export class GamesService {
 
   async update(id: string, gameDto: UpdateGameDto): Promise<Game> {
     const game: Game = await this.findOne(id);
+    const newGame: Game = await this.gamesRepository.save({
+      ...game,
+      ...gameDto,
+    });
 
-    this.lobbyGateway.emitGameUpdated({ ...game, ...gameDto });
+    this.lobbyGateway.emitGameUpdated(game.id);
 
-    return this.gamesRepository.save({ ...game, ...gameDto });
+    return newGame;
   }
 
   findAll(): Promise<Game[]> {

@@ -22,11 +22,11 @@ export class UsersService {
     return this.usersRepository.save({ ...user, ...userDto });
   }
 
-  async findAll(): Promise<User[]> {
+  findAll(): Promise<User[]> {
     return this.usersRepository.find();
   }
 
-  async findAllFromStatus(status: UserStatus): Promise<User[]> {
+  findAllFromStatus(status: UserStatus): Promise<User[]> {
     return this.usersRepository.find({
       where: {
         status,
@@ -34,19 +34,19 @@ export class UsersService {
     });
   }
 
-  async findOneFromClientId(clientId: string): Promise<User> {
+  findOneFromClientId(clientId: string): Promise<User> {
     return this.usersRepository.findOneBy({ clientId });
   }
 
-  async findOne(id: string): Promise<User> {
+  findOne(id: string): Promise<User> {
     return this.usersRepository.findOneBy({ id });
   }
 
-  async findOneByName(name: string): Promise<User> {
+  findOneByName(name: string): Promise<User> {
     return this.usersRepository.findOneBy({ name });
   }
 
-  async delete(id: string): Promise<void> {
+  delete(id: string): void {
     this.usersRepository.delete(id);
   }
 }

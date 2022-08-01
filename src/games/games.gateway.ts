@@ -1,9 +1,11 @@
 import {
+  ClassSerializerInterceptor,
   forwardRef,
   Inject,
   Injectable,
   UseFilters,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   WebSocketGateway,
@@ -24,8 +26,6 @@ import { ConnectedUser } from './types/connectedUser.interface';
 import { GamesInterval } from './games.interval';
 import { UsersService } from 'src/users/users.service';
 import { User, UserStatus } from 'src/users/entities/user.entity';
-
-//Checker à chaque fois si la game (locale) existe
 
 @UseFilters(UnauthorizedExceptionFilter)
 @UseGuards(WsJwtAuthGuard)

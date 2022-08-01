@@ -99,7 +99,7 @@ export class GamesInterval {
   async removeGame(gameId: string) {
     console.log('GAME DELETED');
 
-    await this.gamesService.delete(gameId);
+    this.gamesService.delete(gameId);
     this.gameGateway.socketInstance().emit('gameDeleted', { id: gameId });
   }
 }

@@ -27,7 +27,7 @@ export class AuthService {
     }
 
     const data = this.jwtService.verify(token);
-    const user = this.usersService.findOne(data.sub);
+    const user: User = await this.usersService.findOne(data.sub);
 
     return user;
   }

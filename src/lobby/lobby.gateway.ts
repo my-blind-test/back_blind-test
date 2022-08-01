@@ -1,4 +1,11 @@
-import { forwardRef, Inject, UseFilters, UseGuards } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  forwardRef,
+  Inject,
+  UseFilters,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -18,10 +25,12 @@ import { QueryFailedFilter } from './filters/QuerryFailed.filter';
 import { User, UserStatus } from 'src/users/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
 import { Game } from 'src/games/entities/game.entity';
+import { instanceToPlain } from 'class-transformer';
 
 @UseFilters(UnauthorizedExceptionFilter)
 @UseFilters(QueryFailedFilter)
 @UseGuards(WsJwtAuthGuard)
+@UseInterceptors(ClassSerializerInterceptor)
 @WebSocketGateway({ cors: true, namespace: 'lobby' })
 export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
@@ -32,16 +41,13 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly usersService: UsersService,
   ) {}
 
-  // Créer un décorateur sur client
   async handleConnection(@ConnectedSocket() client: Socket) {
-    const user = await this.authService.verify(client.handshake.auth.token);
+    const user: User = await this.authService.verify(
+      client.handshake.auth.token,
+    );
 
     if (user) {
-      client.broadcast.emit('userJoined', {
-        id: user.id,
-        name: user.name,
-        clientId: client.id,
-      });
+      client.broadcast.emit('userJoined', instanceToPlain(user));
 
       this.usersService.update(user.id, {
         clientId: client.id,
@@ -53,7 +59,7 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
-    const user = await this.usersService.findOneFromClientId(client.id);
+    const user: User = await this.usersService.findOneFromClientId(client.id);
 
     if (user) {
       this.usersService.update(user.id, { status: UserStatus.OFFLINE });
@@ -66,14 +72,14 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async Users() {
     const users: User[] = await this.usersService.findAllFromStatus(
       UserStatus.LOBBY,
-    ); //TODO retirer les champs inutiles
+    );
 
     return { status: 'OK', content: users };
   }
 
   @SubscribeMessage('games')
   async Games() {
-    const games = await this.gamesService.findAll();
+    const games: Game[] = await this.gamesService.findAll();
 
     return { status: 'OK', content: games };
   }
@@ -83,13 +89,15 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() createGameDto: CreateGameDto,
   ) {
-    const user = await this.authService.verify(client.handshake.auth.token);
-    const newGame = await this.gamesService.create({
+    const user: User = await this.authService.verify(
+      client.handshake.auth.token,
+    );
+    const newGame: Game = await this.gamesService.create({
       ...createGameDto,
       adminId: user.id,
     });
 
-    this.server.emit('newGame', { ...newGame });
+    this.server.emit('newGame', instanceToPlain(newGame));
     return { status: 'OK', content: null };
   }
 
@@ -97,7 +105,9 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.emit('gameDeleted', id);
   }
 
-  async emitGameUpdated(game: Game) {
-    this.server.emit('gameUpdated', { ...game });
+  async emitGameUpdated(id: string) {
+    const game: Game = await this.gamesService.findOne(id);
+
+    this.server.emit('gameUpdated', instanceToPlain(game));
   }
 }

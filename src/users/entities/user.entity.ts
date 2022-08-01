@@ -42,7 +42,6 @@ export class User {
   status: UserStatus;
 
   @ApiProperty()
-  @Exclude()
   @Column({ nullable: true })
   gameId?: string;
 }

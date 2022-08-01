@@ -44,7 +44,6 @@ export class Game {
   @Column('jsonb', { nullable: true })
   currentTrack: Track;
 
-  @Exclude()
   @Column('jsonb', { default: [] })
   connectedUsers: ConnectedUser[];
 
