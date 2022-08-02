@@ -92,12 +92,16 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user: User = await this.authService.verify(
       client.handshake.auth.token,
     );
-    const newGame: Game = await this.gamesService.create({
+    const game: Game = await this.gamesService.create({
       ...createGameDto,
       adminId: user.id,
     });
 
-    this.server.emit('newGame', instanceToPlain(newGame));
+    if (!game) {
+      return { status: 'KO', content: "Couldn't load tracks" };
+    }
+
+    this.server.emit('newGame', instanceToPlain(game));
     return { status: 'OK', content: null };
   }
 

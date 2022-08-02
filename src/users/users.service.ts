@@ -26,6 +26,15 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
+  findAllSortedByScore(limit?: number): Promise<User[]> {
+    return this.usersRepository.find({
+      order: {
+        score: 'ASC',
+      },
+      take: limit,
+    });
+  }
+
   findAllFromStatus(status: UserStatus): Promise<User[]> {
     return this.usersRepository.find({
       where: {

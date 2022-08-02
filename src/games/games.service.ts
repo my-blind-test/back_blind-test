@@ -84,14 +84,15 @@ export class GamesService {
         }),
     );
 
-    console.log(tracks);
-
     return tracks;
   }
 
   async create(gameDto: CreateGameDto): Promise<Game> {
-    console.log('HELLO');
     const tracks: Track[] = await this.tracksFromPlaylist(gameDto.playlistUrl);
+
+    if (!tracks.length) {
+      return null;
+    }
 
     return this.gamesRepository.save(
       this.gamesRepository.create({ ...gameDto, tracks }),

@@ -51,15 +51,17 @@ describe('UsersController', () => {
     });
 
     describe('user found', () => {
-      it('should return the value returned by the service method', async () => {
+      it('should return the value returned by the service', async () => {
         expect(await controller.findOne(user.id)).toBe(user);
       });
     });
 
     describe('user not found', () => {
-      it('should throw a NotFoundException', async () => {
+      beforeEach(() => {
         jest.spyOn(service, 'findOne').mockReturnValueOnce(null);
+      });
 
+      it('should throw a NotFoundException', async () => {
         await expect(controller.findOne(user.id)).rejects.toThrow(
           NotFoundException,
         );

@@ -11,12 +11,16 @@ import {
   HttpCode,
   UseInterceptors,
   ClassSerializerInterceptor,
+  Query,
+  ParseIntPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { User } from './entities/user.entity';
+import { Public } from 'src/metadata';
 
 @Controller('users')
 @ApiTags('users')
@@ -28,9 +32,19 @@ export class UsersController {
     return await this.usersService.findOne(req.user['userId']);
   }
 
+  @Public()
+  @Get('/podium')
+  async podium(@Query('limit') limit?: number): Promise<User[]> {
+    if (limit && limit < 1) {
+      throw new BadRequestException('limit must be a positive number');
+    }
+
+    return await this.usersService.findAllSortedByScore(limit || 10);
+  }
+
   @Get(':id')
   async findOne(@Param('id', new ParseUUIDPipe()) id: string): Promise<User> {
-    const user = await this.usersService.findOne(id);
+    const user: User = await this.usersService.findOne(id);
 
     if (!user) {
       throw new NotFoundException();
