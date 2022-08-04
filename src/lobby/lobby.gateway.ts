@@ -78,7 +78,7 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('games')
-  async Games() {
+  async games() {
     const games: Game[] = await this.gamesService.findAll();
 
     return { status: 'OK', content: games };
@@ -102,6 +102,19 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     this.server.emit('newGame', instanceToPlain(game));
+    return { status: 'OK', content: null };
+  }
+
+  @SubscribeMessage('joinGame')
+  async joinGame(
+    @MessageBody('id') id: string,
+    @MessageBody('password') password: string,
+  ) {
+    const game: Game = await this.gamesService.findOne(id);
+
+    if (!game || game.password !== password)
+      return { status: 'KO', content: 'Wrong password' };
+
     return { status: 'OK', content: null };
   }
 
