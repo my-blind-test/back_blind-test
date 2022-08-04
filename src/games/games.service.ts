@@ -95,7 +95,11 @@ export class GamesService {
     }
 
     return this.gamesRepository.save(
-      this.gamesRepository.create({ ...gameDto, tracks }),
+      this.gamesRepository.create({
+        ...gameDto,
+        tracks,
+        isPrivate: gameDto.password ? true : false,
+      }),
     );
   }
 

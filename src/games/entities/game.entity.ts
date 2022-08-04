@@ -25,6 +25,10 @@ export class Game {
   password?: string;
 
   @ApiProperty()
+  @Column({ default: false })
+  isPrivate: boolean;
+
+  @ApiProperty()
   @Column({ default: 0 })
   slots: number;
 
