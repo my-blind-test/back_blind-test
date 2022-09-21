@@ -110,7 +110,7 @@ export class GamesService {
       ...gameDto,
     });
 
-    this.lobbyGateway.emitGameUpdated(game.id);
+    this.lobbyGateway.emitGameUpdated(newGame);
 
     return newGame;
   }

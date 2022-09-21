@@ -23,7 +23,11 @@ export class GamesInterval {
       return;
     }
 
-    this.gameGateway.socketInstance().to(`${gameId}`).emit('gameStarted', {});
+    this.gameGateway
+      .socketInstance()
+      .to(`${gameId}`)
+      .to(gameId)
+      .emit('gameStarted', {});
     this.gamesService.update(gameId, { status: GameStatus.RUNNING });
 
     this.playTrack(gameId);
@@ -42,7 +46,7 @@ export class GamesInterval {
       return;
     }
 
-    this.gameGateway.socketInstance().emit('gameFinished', {});
+    this.gameGateway.socketInstance().to(gameId).emit('gameFinished', {});
 
     const interval = setInterval(callback, 1000);
     this.schedulerRegistry.addInterval(`end-game-${gameId}`, interval);
@@ -76,14 +80,17 @@ export class GamesInterval {
     const game = await this.gamesService.findOne(gameId);
 
     if (!game || !game.tracks[0]) {
-      this.gameGateway.socketInstance().emit('gameFinished', {});
+      this.gameGateway.socketInstance().to(gameId).emit('gameFinished', {});
       this.endGameInterval(gameId);
       this.schedulerRegistry.deleteInterval(`game-${gameId}`);
       return;
     }
 
     const currentTrack: Track = game.tracks[0];
-    this.gameGateway.socketInstance().emit('newTrack', { ...currentTrack });
+    this.gameGateway
+      .socketInstance()
+      .to(gameId)
+      .emit('newTrack', { ...currentTrack });
     game.tracks.shift();
     await this.gamesService.update(game.id, {
       tracks: game.tracks,
@@ -93,6 +100,9 @@ export class GamesInterval {
 
   async removeGame(gameId: string) {
     this.gamesService.delete(gameId);
-    this.gameGateway.socketInstance().emit('gameDeleted', { id: gameId });
+    this.gameGateway
+      .socketInstance()
+      .to(gameId)
+      .emit('gameDeleted', { id: gameId });
   }
 }

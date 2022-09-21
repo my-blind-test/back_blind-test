@@ -15,8 +15,4 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsEnum(UserStatus)
   @IsOptional()
   public status?: UserStatus;
-
-  @IsString()
-  @IsOptional()
-  public gameId?: string;
 }

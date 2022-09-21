@@ -44,25 +44,20 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   async handleConnection(@ConnectedSocket() client: Socket) {
-    console.log('USER CONNECTED');
     const user = await this.authService.verify(client.handshake.auth.token);
 
     if (!user) {
       client.disconnect();
       return;
     }
-
-    this.usersService.update(user.id, { clientId: client.id });
   }
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
-    console.log('USER LEFT');
     const user: User = await this.usersService.findOneFromClientId(client.id);
 
     if (user) {
       this.usersService.update(user.id, {
         status: UserStatus.OFFLINE,
-        gameId: null,
       });
     }
 
@@ -71,8 +66,6 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!game) return;
 
     await this.gamesService.update(game.id, {
-      adminId:
-        client.id === game.adminId ? game.connectedUsers[0]?.id : game.adminId,
       connectedUsers: game.connectedUsers.filter(
         (connectedUser) => connectedUser.clientId !== client.id,
       ),
@@ -90,48 +83,45 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody('id') id: string,
   ) {
-    const user = await this.authService.verify(client.handshake.auth.token);
-    const game = await this.gamesService.findOne(id);
+    let user: User = await this.authService.verify(client.handshake.auth.token);
+    const game: Game = await this.gamesService.findOne(id);
 
-    if (user && game) {
-      await this.gamesService.update(game.id, {
-        adminId: game.adminId ? game.adminId : client.id,
-        connectedUsers: [
-          ...game.connectedUsers,
-          {
-            name: user.name,
-            id: user.id,
-            clientId: client.id,
-            score: user.score,
-          },
-        ],
-      });
+    if (!user || !game) return { status: 'KO', content: null };
 
-      this.usersService.update(user.id, {
-        clientId: client.id,
-        status: UserStatus.GAME,
-        gameId: game.id,
-      });
-
-      // if (game.users.length + 1 >= game.slots) {
-      //   console.log('START BECAUSE GAME IS FULL');
-      //   this.gamesInterval.gameInterval(game);
-      // }
-
-      await client.join(id);
-      this.server.to(id).emit('userJoined', instanceToPlain(user));
-
-      console.log('USER JOINED');
-      return {
-        status: 'OK',
-        content: {
-          users: game.connectedUsers,
-          gameStatus: game.status,
-          trackUrl: game.currentTrack?.url,
+    await this.gamesService.update(game.id, {
+      connectedUsers: [
+        ...game.connectedUsers,
+        {
+          name: user.name,
+          id: user.id,
+          clientId: client.id,
+          score: user.score,
         },
-      };
+      ],
+    });
+
+    user = await this.usersService.update(user.id, {
+      clientId: client.id,
+      status: UserStatus.GAME,
+    });
+
+    if (game.connectedUsers.length + 1 >= game.slots) {
+      this.gamesInterval.gameInterval(game.id);
     }
-    return { status: 'KO', content: null };
+
+    await client.join(id);
+    this.server.to(id).emit('userJoined', instanceToPlain(user));
+
+    console.log('USER JOINED');
+    console.log(user);
+    return {
+      status: 'OK',
+      content: {
+        users: game.connectedUsers,
+        gameStatus: game.status,
+        trackUrl: game.currentTrack?.url,
+      },
+    };
   }
 
   @SubscribeMessage('guess')
@@ -143,6 +133,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         content: 'You must be connected to a game.',
       };
     }
+
     const game: Game = await this.gamesService.findOne(gameId);
     if (game.status !== GameStatus.RUNNING || !game.currentTrack) return;
 
@@ -191,17 +182,6 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       };
     }
 
-    // const game = await this.gamesService.findOne(gameId);
-    // const user = await this.authService.verify(client.handshake.auth.token);
-    // if (!user || game.adminId !== user.id) {
-    //   return {
-    //     status: 'FORBIDEN',
-    //     message: 'You are not allowed to do this action on this game',
-    //   };
-    // }
-
-    console.log('START REQUESTED');
-
     this.gamesInterval.gameInterval(gameId);
     return { status: 'OK', content: null };
   }
@@ -215,17 +195,6 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         content: 'You must be connected to a game.',
       };
     }
-
-    // const game = await this.gamesService.findOne(gameId);
-    // const user = await this.authService.verify(client.handshake.auth.token);
-    // if (!user || game.user.id !== user.id) {
-    //   return {
-    //     status: 'FORBIDEN',
-    //     message: 'You are not allowed to do this action on this game',
-    //   };
-    // }
-
-    console.log('DELETE REQUESTED');
 
     this.server.emit('gameFinished', {});
     this.gamesInterval.endGameInterval(gameId);

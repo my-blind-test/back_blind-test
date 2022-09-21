@@ -29,7 +29,7 @@ export class Game {
   isPrivate: boolean;
 
   @ApiProperty()
-  @Column({ default: 0 })
+  @Column({ default: 20 })
   slots: number;
 
   @ApiProperty()
@@ -50,7 +50,4 @@ export class Game {
 
   @Column('jsonb', { default: [] })
   connectedUsers: ConnectedUser[];
-
-  @Column({ nullable: true })
-  adminId: string;
 }

@@ -40,8 +40,4 @@ export class User {
     default: UserStatus.OFFLINE,
   })
   status: UserStatus;
-
-  @ApiProperty()
-  @Column({ nullable: true })
-  gameId?: string;
 }

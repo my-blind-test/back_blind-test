@@ -13,17 +13,7 @@ export class CreateGameDto {
   public password?: string;
 
   @ApiProperty()
-  @IsNumber()
-  @IsOptional()
-  public slots?: number;
-
-  @ApiProperty()
   @IsString()
   @IsNotEmpty()
   public playlistUrl: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  public adminId?: string;
 }

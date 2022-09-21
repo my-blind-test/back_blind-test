@@ -34,6 +34,7 @@ import { instanceToPlain } from 'class-transformer';
 @WebSocketGateway({ cors: true, namespace: 'lobby' })
 export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
+
   constructor(
     @Inject(forwardRef(() => GamesService))
     private readonly gamesService: GamesService,
@@ -68,15 +69,6 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.emit('userLeft', client.id);
   }
 
-  @SubscribeMessage('users')
-  async Users() {
-    const users: User[] = await this.usersService.findAllFromStatus(
-      UserStatus.LOBBY,
-    );
-
-    return { status: 'OK', content: users };
-  }
-
   @SubscribeMessage('games')
   async games() {
     const games: Game[] = await this.gamesService.findAll();
@@ -92,14 +84,10 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user: User = await this.authService.verify(
       client.handshake.auth.token,
     );
-    const game: Game = await this.gamesService.create({
-      ...createGameDto,
-      adminId: user.id,
-    });
+    if (!user) return { status: 'KO', content: "Couldn't load tracks" };
 
-    if (!game) {
-      return { status: 'KO', content: "Couldn't load tracks" };
-    }
+    const game: Game = await this.gamesService.create(createGameDto);
+    if (!game) return { status: 'KO', content: "Couldn't load tracks" };
 
     this.server.emit('newGame', instanceToPlain(game));
     return { status: 'OK', content: null };
@@ -122,9 +110,7 @@ export class LobbyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.emit('gameDeleted', id);
   }
 
-  async emitGameUpdated(id: string) {
-    const game: Game = await this.gamesService.findOne(id);
-
+  async emitGameUpdated(game: Game) {
     this.server.emit('gameUpdated', instanceToPlain(game));
   }
 }
