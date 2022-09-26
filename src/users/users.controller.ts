@@ -12,7 +12,6 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
   Query,
-  ParseIntPipe,
   BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -20,7 +19,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { User } from './entities/user.entity';
-import { Public } from 'src/metadata';
+import { Public } from '../metadata';
 
 @Controller('users')
 @ApiTags('users')
@@ -29,7 +28,12 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
   @Get('/me')
   async findMe(@Req() req: Request): Promise<User> {
-    return await this.usersService.findOne(req.user['userId']);
+    const user: User = await this.usersService.findOne(req.user['userId']);
+
+    if (!user) {
+      throw new NotFoundException();
+    }
+    return user;
   }
 
   @Public()
@@ -78,6 +82,6 @@ export class UsersController {
     if (!user || (!user.isAdmin && req.user['userId'] != id)) {
       throw new NotFoundException();
     }
-    console.log(this.usersService.delete(id));
+    this.usersService.delete(id);
   }
 }
