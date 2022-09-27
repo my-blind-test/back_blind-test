@@ -26,14 +26,14 @@ describe('UsersController', () => {
       providers: [
         {
           provide: UsersService,
-          useFactory: () => ({
+          useValue: {
             findOne: jest.fn((userId) =>
               Promise.resolve(userId === user.id ? user : null),
             ),
             findAllSortedByScore: jest.fn(() => Promise.resolve([user])),
             update: jest.fn(() => Promise.resolve(user)),
             delete: jest.fn(),
-          }),
+          },
         },
       ],
     }).compile();
